@@ -36,13 +36,26 @@ const LISTING_SORTS = [
 
 /**
  * Returns one page of listings plus the total count for pagination.
- * $filters: type ('auction'|'fixed'|''), status ('active'|'all'|...), sort, page, limit
+ * $filters: q (search text), category (slug), type ('auction'|'fixed'|''),
+ *           status ('active'|'all'|...), sort, page, limit
  */
 function findListings(array $filters): array
 {
     $where  = [];
     $params = [];
 
+    if ($filters['q'] !== '') {
+        // Search in title and description. % and _ typed by the user are escaped,
+        // so they are searched as normal characters, not used as LIKE wildcards.
+        $search  = '%' . addcslashes($filters['q'], '%_\\') . '%';
+        $where[] = '(title LIKE :q_title OR description LIKE :q_description)';
+        $params['q_title']       = $search;
+        $params['q_description'] = $search;
+    }
+    if ($filters['category'] !== '') {
+        $where[] = 'category_slug = :category';
+        $params['category'] = $filters['category'];
+    }
     if ($filters['type'] !== '') {
         $where[] = 'listing_type = :type';
         $params['type'] = $filters['type'];

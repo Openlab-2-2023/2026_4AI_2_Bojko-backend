@@ -2,9 +2,11 @@
 // Endpoints for listings. They read and validate the request,
 // call the listing service and send back JSON.
 
-// GET /api/listings?type=auction&status=active&sort=ending_soon&page=1&limit=24
+// GET /api/listings?q=iphone&category=elektronika&type=auction&status=active&sort=ending_soon&page=1&limit=24
 function listListings(): never
 {
+    $q        = mb_substr(queryString('q'), 0, 100);
+    $category = queryString('category');
     $type   = queryString('type');
     $status = queryString('status', 'active');
     $sort   = queryString('sort', 'newest');
@@ -20,7 +22,9 @@ function listListings(): never
     }
 
     sendJson(findListings([
-        'type'   => $type,
+        'q'        => $q,
+        'category' => $category,
+        'type'     => $type,
         'status' => $status,
         'sort'   => $sort,
         'page'   => queryInt('page', 1, 1, 10000),
