@@ -25,6 +25,10 @@ const LISTING_SELECT = "
     LEFT JOIN orders o ON o.listing_id = l.id
 ";
 
+// Allowed values of listings.item_condition (the same list as the ENUM in schema.sql).
+// The API sends the key ("very_good"); Angular shows the Slovak label.
+const ITEM_CONDITIONS = ['new', 'like_new', 'very_good', 'good', 'acceptable'];
+
 // Allowed sort options. The user only chooses a key, never raw SQL,
 // so ORDER BY cannot be used for SQL injection.
 const LISTING_SORTS = [
