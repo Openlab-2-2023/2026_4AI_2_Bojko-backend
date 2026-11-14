@@ -13,13 +13,19 @@ require __DIR__ . '/middleware/auth.php';
 require __DIR__ . '/services/listing_service.php';
 require __DIR__ . '/services/category_service.php';
 require __DIR__ . '/services/user_service.php';
+require __DIR__ . '/services/bid_service.php';
 require __DIR__ . '/api/listings.php';
 require __DIR__ . '/api/categories.php';
 require __DIR__ . '/api/auth.php';
+require __DIR__ . '/api/bids.php';
 
-// Any unexpected error (e.g. database down) → log the details, send a generic 500.
+// A broken business rule (ApiException) → its message and status code.
+// Any other error (e.g. database down) → log the details, send a generic 500.
 // The real error message is never shown to the browser.
 set_exception_handler(function (Throwable $e) {
+    if ($e instanceof ApiException) {
+        sendError($e->getMessage(), $e->status, $e->fields);   // expected rule violation
+    }
     error_log($e);
     sendError('Nastala chyba na serveri.', 500);
 });
@@ -36,6 +42,7 @@ $routes = [
     ['GET',  '#^/api/categories$#',      'listCategories'],
     ['GET',  '#^/api/listings$#',        'listListings'],
     ['GET',  '#^/api/listings/(\d+)$#',  'getListing'],
+    ['POST', '#^/api/listings/(\d+)/bids$#', 'createBid'],
 
     ['POST', '#^/api/auth/register$#',   'register'],
     ['POST', '#^/api/auth/login$#',      'login'],

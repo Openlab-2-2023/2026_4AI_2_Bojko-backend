@@ -15,6 +15,11 @@ function requireLogin(): int
     if ($userId === null) {
         sendError('Na túto akciu sa musíte prihlásiť.', 401);
     }
+    // The account may have been deleted (e.g. after re-importing seed.sql).
+    if (findUserById($userId) === null) {
+        endUserSession();
+        sendError('Vaše prihlásenie vypršalo. Prihláste sa znova.', 401);
+    }
     return $userId;
 }
 
@@ -23,12 +28,18 @@ function startUserSession(int $userId): void
 {
     // A new session ID after login prevents "session fixation":
     // an attacker can't plant a session ID before login and reuse it after.
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();          // first login in this browser → create the session now
+    }
     session_regenerate_id(true);
     $_SESSION['user_id'] = $userId;
 }
 
 function endUserSession(): void
 {
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        return;                   // nobody was logged in
+    }
     $_SESSION = [];
     $cookie = session_get_cookie_params();
     setcookie(session_name(), '', [

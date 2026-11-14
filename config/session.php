@@ -15,5 +15,10 @@ function startSession(): void
     ]);
     ini_set('session.use_strict_mode', '1');  // reject session IDs the server did not create
 
-    session_start();
+    // Visitors who never logged in don't get a session (and no cookie).
+    // Otherwise every anonymous request would send a new empty cookie, and one
+    // arriving just after a login could overwrite the logged-in cookie.
+    if (isset($_COOKIE[session_name()])) {
+        session_start();
+    }
 }

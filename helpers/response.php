@@ -68,3 +68,14 @@ function toIsoDate(?string $mysqlDate): ?string
 {
     return $mysqlDate === null ? null : (new DateTime($mysqlDate))->format(DATE_ATOM);
 }
+
+// Thrown by services when a request breaks a business rule
+// (e.g. "the auction has ended"). index.php turns it into a JSON error,
+// so a service never has to know about HTTP responses itself.
+class ApiException extends RuntimeException
+{
+    public function __construct(string $message, public readonly int $status, public readonly array $fields = [])
+    {
+        parent::__construct($message);
+    }
+}
