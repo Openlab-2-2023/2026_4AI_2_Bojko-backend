@@ -36,12 +36,14 @@ const LISTING_SORTS = [
     'ending_soon' => 'end_time IS NULL, end_time ASC',   // fixed-price items (no end) go last
     'price_asc'   => 'price ASC',
     'price_desc'  => 'price DESC',
+    'most_bids'   => 'bid_count DESC',
 ];
 
 /**
  * Returns one page of listings plus the total count for pagination.
  * $filters: q (search text), category (slug), type ('auction'|'fixed'|''),
- *           status ('active'|'all'|...), sort, page, limit
+ *           status ('active'|'all'|...), minPrice, maxPrice (float|null),
+ *           conditions (list of ITEM_CONDITIONS keys), sort, page, limit
  */
 function findListings(array $filters): array
 {
@@ -49,12 +51,14 @@ function findListings(array $filters): array
     $params = [];
 
     if ($filters['q'] !== '') {
-        // Search in title and description. % and _ typed by the user are escaped,
-        // so they are searched as normal characters, not used as LIKE wildcards.
+        // Search in title, description and category name ("hodinky" finds watches,
+        // even though the product texts are in English). % and _ typed by the user
+        // are escaped, so they are searched as normal characters, not as wildcards.
         $search  = '%' . addcslashes($filters['q'], '%_\\') . '%';
-        $where[] = '(title LIKE :q_title OR description LIKE :q_description)';
+        $where[] = '(title LIKE :q_title OR description LIKE :q_description OR category_name LIKE :q_category)';
         $params['q_title']       = $search;
         $params['q_description'] = $search;
+        $params['q_category']    = $search;
     }
     if ($filters['category'] !== '') {
         $where[] = 'category_slug = :category';
@@ -68,11 +72,29 @@ function findListings(array $filters): array
         $where[] = 'status = :status';
         $params['status'] = $filters['status'];
     }
+    if ($filters['minPrice'] !== null) {
+        $where[] = 'price >= :min_price';
+        $params['min_price'] = $filters['minPrice'];
+    }
+    if ($filters['maxPrice'] !== null) {
+        $where[] = 'price <= :max_price';
+        $params['max_price'] = $filters['maxPrice'];
+    }
+    if ($filters['conditions']) {
+        // One placeholder per chosen condition: item_condition IN (:condition0, :condition1)
+        $placeholders = [];
+        foreach (array_values($filters['conditions']) as $i => $condition) {
+            $placeholders[] = ":condition$i";
+            $params["condition$i"] = $condition;
+        }
+        $where[] = 'item_condition IN (' . implode(', ', $placeholders) . ')';
+    }
 
     // The base query is wrapped as a sub-query so we can filter on the calculated status.
     $from     = '(' . LISTING_SELECT . ') AS x';
     $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-    $orderSql = LISTING_SORTS[$filters['sort']] ?? LISTING_SORTS['newest'];
+    // Running listings always come first, ended/sold ones after them.
+    $orderSql = "status = 'active' DESC, " . (LISTING_SORTS[$filters['sort']] ?? LISTING_SORTS['newest']);
 
     // 1) total number of matching listings
     $countStmt = db()->prepare("SELECT COUNT(*) FROM $from $whereSql");
