@@ -9,7 +9,7 @@ function listListings(): never
     $q        = mb_substr(queryString('q'), 0, 100);
     $category = queryString('category');
     $type     = queryString('type');
-    $status   = queryString('status', 'active');
+    $status   = queryString('status', 'current');   // current = running + not started yet
     $sort     = queryString('sort', 'newest');
     $minPrice = queryPrice('minPrice');
     $maxPrice = queryPrice('maxPrice');
@@ -21,7 +21,7 @@ function listListings(): never
     if (!in_array($type, ['', 'auction', 'fixed'], true)) {
         sendError('Neplatný typ ponuky.', 400);
     }
-    if (!in_array($status, ['all', 'active', 'upcoming', 'ended', 'sold'], true)) {
+    if (!in_array($status, ['all', 'current', 'active', 'upcoming', 'ended', 'sold'], true)) {
         sendError('Neplatný stav ponuky.', 400);
     }
     if (!array_key_exists($sort, LISTING_SORTS)) {

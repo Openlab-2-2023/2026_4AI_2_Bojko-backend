@@ -14,10 +14,13 @@ require __DIR__ . '/services/listing_service.php';
 require __DIR__ . '/services/category_service.php';
 require __DIR__ . '/services/user_service.php';
 require __DIR__ . '/services/bid_service.php';
+require __DIR__ . '/services/order_service.php';
 require __DIR__ . '/api/listings.php';
 require __DIR__ . '/api/categories.php';
 require __DIR__ . '/api/auth.php';
 require __DIR__ . '/api/bids.php';
+require __DIR__ . '/api/orders.php';
+require __DIR__ . '/api/watchlist.php';
 
 // A broken business rule (ApiException) → its message and status code.
 // Any other error (e.g. database down) → log the details, send a generic 500.
@@ -43,6 +46,11 @@ $routes = [
     ['GET',  '#^/api/listings$#',        'listListings'],
     ['GET',  '#^/api/listings/(\d+)$#',  'getListing'],
     ['POST', '#^/api/listings/(\d+)/bids$#', 'createBid'],
+    ['POST',   '#^/api/listings/(\d+)/watch$#', 'watchListing'],
+    ['DELETE', '#^/api/listings/(\d+)/watch$#', 'unwatchListing'],
+
+    ['POST', '#^/api/orders$#',          'createOrderEndpoint'],
+    ['GET',  '#^/api/orders/(\d+)$#',   'getOrder'],
 
     ['POST', '#^/api/auth/register$#',   'register'],
     ['POST', '#^/api/auth/login$#',      'login'],

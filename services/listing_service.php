@@ -68,7 +68,9 @@ function findListings(array $filters): array
         $where[] = 'listing_type = :type';
         $params['type'] = $filters['type'];
     }
-    if ($filters['status'] !== 'all') {
+    if ($filters['status'] === 'current') {
+        $where[] = "status IN ('active', 'upcoming')";
+    } elseif ($filters['status'] !== 'all') {
         $where[] = 'status = :status';
         $params['status'] = $filters['status'];
     }
@@ -93,8 +95,8 @@ function findListings(array $filters): array
     // The base query is wrapped as a sub-query so we can filter on the calculated status.
     $from     = '(' . LISTING_SELECT . ') AS x';
     $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-    // Running listings always come first, ended/sold ones after them.
-    $orderSql = "status = 'active' DESC, " . (LISTING_SORTS[$filters['sort']] ?? LISTING_SORTS['newest']);
+    // Running listings first, then the ones that haven't started, ended/sold ones last.
+    $orderSql = "FIELD(status, 'active', 'upcoming', 'ended', 'sold'), " . (LISTING_SORTS[$filters['sort']] ?? LISTING_SORTS['newest']);
 
     // 1) total number of matching listings
     $countStmt = db()->prepare("SELECT COUNT(*) FROM $from $whereSql");
@@ -139,7 +141,27 @@ function findListingById(int $id): ?array
     $listing['bids']   = $row['listing_type'] === 'auction' ? findBids($id) : [];
     $listing['seller'] += findSellerRating((int) $row['seller_id']);
 
+    // Has someone already bought / paid for it?
+    $order = findOrderByListing($id);
+    $listing['paid'] = $order !== null;
+
+    // Information only for the logged-in visitor (computed from the session).
+    $userId = currentUserId();
+    $listing['viewer'] = [
+        'watching' => $userId !== null && isWatching($userId, $id),
+        // the order is visible only to its buyer and the seller
+        'orderId'  => $order !== null && in_array($userId, [(int) $order['buyer_id'], (int) $row['seller_id']], true)
+                        ? (int) $order['id'] : null,
+    ];
+
     return $listing;
+}
+
+function isWatching(int $userId, int $listingId): bool
+{
+    $stmt = db()->prepare('SELECT 1 FROM watchlist WHERE user_id = :user AND listing_id = :listing');
+    $stmt->execute(['user' => $userId, 'listing' => $listingId]);
+    return (bool) $stmt->fetchColumn();
 }
 
 /** Gallery images; falls back to the cover image if there are no extra images. */
